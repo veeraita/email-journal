@@ -2,6 +2,10 @@ import os
 import datetime
 import base64
 import json
+import logging
+
+logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
+
 from email.mime.text import MIMEText
 
 from googleapiclient.discovery import build
@@ -31,10 +35,10 @@ def create_message(sender, to, subject, message_text):
 def send_message(service, user_id, message):
     try:
         message = service.users().messages().send(userId=user_id, body=message).execute()
-        print(f'Message sent successfully! Message Id: {message["id"]}')
+        logging.info(f'Message sent successfully! Message Id: {message["id"]}')
         return message
     except HttpError as error:
-        print('An error occurred:', error)
+        logging.exception('An error occurred')
 
 
 # Email configurations
@@ -44,9 +48,9 @@ with open(config_file, 'r') as f:
 
 sender = config['sender']
 receiver = config['receiver']
-subject = 'Test Email'
+subject = 'Daily Journal Reminder'
 body = """
-This is a test message :)
+Was there something that made you happy today? Write it down so you'll remember it later!
 """
 
 # Gmail API credentials
