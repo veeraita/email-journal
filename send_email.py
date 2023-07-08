@@ -1,5 +1,4 @@
 import os
-import datetime
 import base64
 import json
 import logging
@@ -13,6 +12,18 @@ from googleapiclient.errors import HttpError
 from google.oauth2 import credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
+
+from compile_prompt import create_message_text
+
+### File path definitions ###
+# Gmail API credentials
+SCOPES = ["https://www.googleapis.com/auth/gmail.send"]
+CREDENTIALS_FILE = 'credentials.json'
+TOKEN_FILE = 'token.json'
+# Email config
+CONFIG_FILE = 'config.json'
+# Journaling prompts
+PROMPT_FILE = 'journal_prompts.txt'
 
 
 def create_message(sender, to, subject, message_text):
@@ -42,36 +53,26 @@ def send_message(service, user_id, message):
 
 
 # Email configurations
-config_file = 'config.json'
-with open(config_file, 'r') as f:
+with open(CONFIG_FILE, 'r') as f:
     config = json.load(f)
 
 sender = config['sender']
 receiver = config['receiver']
 subject = 'Daily Journal Reminder'
-body = """
-Was there something that made you happy today? Write it down so you'll remember it later!
-"""
-
-# Gmail API credentials
-SCOPES = [
-        "https://www.googleapis.com/auth/gmail.send"
-    ]
-credentials_file = 'credentials.json'
-token_file = 'token.json'
+body = create_message_text(PROMPT_FILE)
 
 creds = None
-if os.path.exists(token_file):
-    creds = credentials.Credentials.from_authorized_user_file(token_file, SCOPES)
+if os.path.exists(TOKEN_FILE):
+    creds = credentials.Credentials.from_authorized_user_file(TOKEN_FILE, SCOPES)
 
 # Do the authentication
 if not creds or not creds.valid:
     if creds and creds.expired and creds.refresh_token:
         creds.refresh(Request())
     else:
-        flow = InstalledAppFlow.from_client_secrets_file(credentials_file, SCOPES)
+        flow = InstalledAppFlow.from_client_secrets_file(CREDENTIALS_FILE, SCOPES)
         creds = flow.run_local_server(port=0)
-    with open(token_file, 'w') as token:
+    with open(TOKEN_FILE, 'w') as token:
         token.write(creds.to_json())
 
 # Create Gmail API service
