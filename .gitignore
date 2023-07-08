@@ -1,4 +1,5 @@
 .idea/
 *.json
+*.log
 venv/
 __pycache__
