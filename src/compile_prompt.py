@@ -1,8 +1,5 @@
 import random
 
-# Prompt file path (prompts adapted from https://dayoneapp.com/blog/journal-prompts/)
-PROMPT_FILE = 'journal_prompts.txt'
-
 
 def select_random_prompts(prompt_file, k=3):
     with open(prompt_file, 'r') as file:
@@ -17,4 +14,3 @@ def create_message_text(prompt_file):
     random_prompts = select_random_prompts(prompt_file, k=3)
     msg += '\n'.join(random_prompts)
     return msg
-

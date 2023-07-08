@@ -3,7 +3,8 @@ import base64
 import json
 import logging
 
-logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
+logging.basicConfig(format='%(asctime)s - %(message)s',
+                    level=logging.INFO)
 
 from email.mime.text import MIMEText
 
@@ -16,14 +17,15 @@ from google.auth.transport.requests import Request
 from compile_prompt import create_message_text
 
 ### File path definitions ###
+cwd = os.path.abspath(os.path.dirname(__file__))
 # Gmail API credentials
 SCOPES = ["https://www.googleapis.com/auth/gmail.send"]
-CREDENTIALS_FILE = 'credentials.json'
-TOKEN_FILE = 'token.json'
+CREDENTIALS_FILE = os.path.abspath(os.path.join(os.path.dirname(cwd), 'credentials.json'))
+TOKEN_FILE = os.path.abspath(os.path.join(os.path.dirname(cwd), 'token.json'))
 # Email config
-CONFIG_FILE = 'config.json'
+CONFIG_FILE = os.path.abspath(os.path.join(os.path.dirname(cwd), 'config.json'))
 # Journaling prompts
-PROMPT_FILE = 'journal_prompts.txt'
+PROMPT_FILE = os.path.abspath(os.path.join(os.path.dirname(cwd), 'journal_prompts.txt'))
 
 
 def create_message(sender, to, subject, message_text):
