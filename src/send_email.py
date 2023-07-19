@@ -14,14 +14,14 @@ from google.oauth2 import credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
 
-from compile_prompt import create_message_text
+from utils.compile_prompt import create_message_text
 
 ### File path definitions ###
 cwd = os.path.abspath(os.path.dirname(__file__))
 # Gmail API credentials
 SCOPES = ["https://www.googleapis.com/auth/gmail.send"]
-CREDENTIALS_FILE = os.path.abspath(os.path.join(os.path.dirname(cwd), 'credentials.json'))
-TOKEN_FILE = os.path.abspath(os.path.join(os.path.dirname(cwd), 'token.json'))
+CREDENTIALS_FILE = os.path.abspath(os.path.join(os.path.dirname(cwd), 'oauth2_credentials.json'))
+TOKEN_FILE = '/tmp/token.json'
 # Email config
 CONFIG_FILE = os.path.abspath(os.path.join(os.path.dirname(cwd), 'config.json'))
 # Journaling prompts
@@ -54,32 +54,37 @@ def send_message(service, user_id, message):
         logging.exception('An error occurred')
 
 
-# Email configurations
-with open(CONFIG_FILE, 'r') as f:
-    config = json.load(f)
+def connect_and_send():
+    # Email configurations
+    with open(CONFIG_FILE, 'r') as f:
+        config = json.load(f)
 
-sender = config['sender']
-receiver = config['receiver']
-subject = 'Daily Journal Reminder'
-body = create_message_text(PROMPT_FILE)
+    sender = config['sender']
+    receiver = config['receiver']
+    subject = 'Daily Journal Reminder'
+    body = create_message_text(PROMPT_FILE)
 
-creds = None
-if os.path.exists(TOKEN_FILE):
-    creds = credentials.Credentials.from_authorized_user_file(TOKEN_FILE, SCOPES)
+    creds = None
+    if os.path.exists(TOKEN_FILE):
+        creds = credentials.Credentials.from_authorized_user_file(TOKEN_FILE, SCOPES)
 
-# Do the authentication
-if not creds or not creds.valid:
-    if creds and creds.expired and creds.refresh_token:
-        creds.refresh(Request())
-    else:
-        flow = InstalledAppFlow.from_client_secrets_file(CREDENTIALS_FILE, SCOPES)
-        creds = flow.run_local_server(port=0)
-    with open(TOKEN_FILE, 'w') as token:
-        token.write(creds.to_json())
+    # Do the authentication
+    if not creds or not creds.valid:
+        if creds and creds.expired and creds.refresh_token:
+            creds.refresh(Request())
+        else:
+            flow = InstalledAppFlow.from_client_secrets_file(CREDENTIALS_FILE, SCOPES)
+            creds = flow.run_local_server(port=0)
+        with open(TOKEN_FILE, 'w') as token:
+            token.write(creds.to_json())
 
-# Create Gmail API service
-service = build('gmail', 'v1', credentials=creds)
+    # Create Gmail API service
+    service = build('gmail', 'v1', credentials=creds)
 
-# Send the email
-message = create_message(sender, receiver, subject, body)
-send_message(service, 'me', message)
+    # Send the email
+    message = create_message(sender, receiver, subject, body)
+    send_message(service, 'me', message)
+
+
+if __name__ == '__main__':
+    connect_and_send()
