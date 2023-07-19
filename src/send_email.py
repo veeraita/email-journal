@@ -1,90 +1,58 @@
 import os
-import base64
 import json
 import logging
-
-logging.basicConfig(format='%(asctime)s - %(message)s',
-                    level=logging.INFO)
+import smtplib
+import ssl
 
 from email.mime.text import MIMEText
 
-from googleapiclient.discovery import build
-from googleapiclient.errors import HttpError
-from google.oauth2 import credentials
-from google_auth_oauthlib.flow import InstalledAppFlow
-from google.auth.transport.requests import Request
-
 from utils.compile_prompt import create_message_text
 
+logging.basicConfig(format="%(asctime)s - %(message)s", level=logging.INFO)
+
 ### File path definitions ###
+# Current directory
 cwd = os.path.abspath(os.path.dirname(__file__))
-# Gmail API credentials
-SCOPES = ["https://www.googleapis.com/auth/gmail.send"]
-CREDENTIALS_FILE = os.path.abspath(os.path.join(os.path.dirname(cwd), 'oauth2_credentials.json'))
-TOKEN_FILE = '/tmp/token.json'
 # Email config
-CONFIG_FILE = os.path.abspath(os.path.join(os.path.dirname(cwd), 'config.json'))
+CONFIG_FILE = os.path.abspath(os.path.join(os.path.dirname(cwd), "config.json"))
 # Journaling prompts
-PROMPT_FILE = os.path.abspath(os.path.join(os.path.dirname(cwd), 'journal_prompts.txt'))
+PROMPT_FILE = os.path.abspath(os.path.join(os.path.dirname(cwd), "journal_prompts.txt"))
 
 
 def create_message(sender, to, subject, message_text):
     message = MIMEText(message_text)
-    message['to'] = to
-    message['subject'] = subject
-    message = {
-        'raw': base64.urlsafe_b64encode(message.as_bytes()).decode('utf-8'),
-        'payload': {
-            'headers': {
-                'From': sender,
-                'To': to,
-                'Subject': subject
-            }
-        }
-    }
+    message["to"] = to
+    message["subject"] = subject
+
     return message
 
 
-def send_message(service, user_id, message):
+def send_message(sender_email, receiver_email, password, message):
     try:
-        message = service.users().messages().send(userId=user_id, body=message).execute()
-        logging.info(f'Message sent successfully! Message Id: {message["id"]}')
-        return message
-    except HttpError as error:
-        logging.exception('An error occurred')
+        context = ssl.create_default_context()
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465, context=context) as server:
+            server.login(sender_email, password)
+            server.sendmail(sender_email, receiver_email, message.as_string())
+        logging.info("Successfully sent email")
+    except:
+        logging.exception("An error occurred")
 
 
-def connect_and_send():
+def main():
     # Email configurations
-    with open(CONFIG_FILE, 'r') as f:
+    with open(CONFIG_FILE, "r") as f:
         config = json.load(f)
 
-    sender = config['sender']
-    receiver = config['receiver']
-    subject = 'Daily Journal Reminder'
+    sender = config["sender"]
+    receiver = config["receiver"]
+    password = config["password"]
+    subject = "Daily Journal Reminder"
     body = create_message_text(PROMPT_FILE)
-
-    creds = None
-    if os.path.exists(TOKEN_FILE):
-        creds = credentials.Credentials.from_authorized_user_file(TOKEN_FILE, SCOPES)
-
-    # Do the authentication
-    if not creds or not creds.valid:
-        if creds and creds.expired and creds.refresh_token:
-            creds.refresh(Request())
-        else:
-            flow = InstalledAppFlow.from_client_secrets_file(CREDENTIALS_FILE, SCOPES)
-            creds = flow.run_local_server(port=0)
-        with open(TOKEN_FILE, 'w') as token:
-            token.write(creds.to_json())
-
-    # Create Gmail API service
-    service = build('gmail', 'v1', credentials=creds)
 
     # Send the email
     message = create_message(sender, receiver, subject, body)
-    send_message(service, 'me', message)
+    send_message(sender, receiver, password, message)
 
 
-if __name__ == '__main__':
-    connect_and_send()
+if __name__ == "__main__":
+    main()
